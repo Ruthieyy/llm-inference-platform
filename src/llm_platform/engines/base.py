@@ -1,0 +1,36 @@
+"""Inference engine contract used by the cohort batcher.
+
+States are opaque. The batcher only needs prefill, sample, decode, row
+selection, and concatenation of two states that share a sequence length.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+
+class GenerationEngine(Protocol):
+    eos_token_id: int
+    pad_token_id: int
+
+    def is_stop(self, token_id: int) -> bool: ...
+
+    def encode_chat(self, messages: list[dict[str, str]]) -> list[int]: ...
+
+    def encode_text(self, text: str) -> list[int]: ...
+
+    def decode_tokens(self, token_ids: list[int]) -> str: ...
+
+    def prefill(self, sequences: list[list[int]], target_len: int | None = None) -> Any: ...
+
+    def sample(self, state: Any, temperatures: list[float], top_ps: list[float]) -> list[int]: ...
+
+    def decode(self, state: Any, token_ids: list[int]) -> Any: ...
+
+    def filter_batch(self, state: Any, keep: list[int]) -> Any: ...
+
+    def concat_batch(self, left: Any, right: Any) -> Any: ...
+
+    def batch_size(self, state: Any) -> int: ...
+
+    def seq_len(self, state: Any) -> int: ...

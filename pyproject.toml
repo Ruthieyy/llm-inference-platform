@@ -1,0 +1,19 @@
+[project]
+name = "llm-inference-platform"
+version = "0.1.0"
+description = "OpenAI-compatible LLM inference gateway with continuous batching, quantization, and pluggable CPU/GPU backends."
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests", "bench"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

@@ -1,0 +1,13 @@
+.venv
+.git
+.cache
+.hf
+models
+**/*.gguf
+**/__pycache__
+.pytest_cache
+.ruff_cache
+bench/results
+*.md
+!README.md
+.env
