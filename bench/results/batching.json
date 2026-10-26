@@ -1,0 +1,68 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "quantization": "fp32",
+  "prompt": "In one short sentence, say what a token is.",
+  "max_tokens": 16,
+  "scenarios": [
+    {
+      "requests": 4,
+      "concurrency": 1,
+      "max_tokens": 16,
+      "ok": 4,
+      "errors": 0,
+      "wall_s": 3.1215080580000176,
+      "completion_tokens": 64,
+      "tokens_per_s": 20.502910391653916,
+      "requests_per_s": 1.2814318994783698,
+      "latency_s": {
+        "p50": 0.7860639724999601,
+        "p95": 0.8009359237501145,
+        "p99": 0.8024440615501157,
+        "mean": 0.7803256199999851
+      },
+      "ttft_s": {
+        "p50": 0.12235102600004666,
+        "p95": 0.13417831959991416,
+        "p99": 0.13516137351990437,
+        "mean": 0.12242984775002697
+      },
+      "sample_text": "A token is a small, portable unit of data that can be used to represent",
+      "error_samples": [],
+      "name": "unbatched",
+      "batch_config": {
+        "max_batch_size": 1,
+        "max_wait_ms": 0
+      }
+    },
+    {
+      "requests": 8,
+      "concurrency": 4,
+      "max_tokens": 16,
+      "ok": 8,
+      "errors": 0,
+      "wall_s": 2.899499892999984,
+      "completion_tokens": 128,
+      "tokens_per_s": 44.1455439639848,
+      "requests_per_s": 2.75909649774905,
+      "latency_s": {
+        "p50": 1.4490988855000069,
+        "p95": 1.4660973259999763,
+        "p99": 1.466194693199991,
+        "mean": 1.4489194620000205
+      },
+      "ttft_s": {
+        "p50": 0.3098115609998331,
+        "p95": 0.31965850664986417,
+        "p99": 0.31972131652983765,
+        "mean": 0.3091272448749578
+      },
+      "sample_text": "A token is a small, portable unit of data that can be used to represent",
+      "error_samples": [],
+      "name": "batched",
+      "batch_config": {
+        "max_batch_size": 4,
+        "max_wait_ms": 30
+      }
+    }
+  ]
+}

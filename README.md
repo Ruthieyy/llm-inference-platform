@@ -52,7 +52,7 @@ This is not paged attention. A new prompt longer than the live KV length cannot 
 | --- | --- |
 | `fp32` | Checkpoint loaded in float32. Reference for quality and for the `model.generate` cross-check. |
 | `fp16` | Full cast to float16. CPU kernels may reject this. The bench records the exception instead of inventing a speedup. |
-| `int8` | `torch.ao.quantization.quantize_dynamic` on `nn.Linear`. This is the default serving mode. |
+| `int8` | `torch.ao.quantization.quantize_dynamic` on `nn.Linear`. Faster per token on this CPU, and it failed the quality check, so it is not the default. |
 | `int4` | Group-wise symmetric int4 weights, packed 2-per-byte, dequantized to float32 on each forward. `lm_head` stays float. Without an int4 GEMM this is a memory optimization and is often slower. A real int4 speedup on CPU is a GGUF Q4 model under llama.cpp. |
 
 ### Metrics
@@ -68,7 +68,7 @@ Grafana is provisioned from [deploy/grafana/dashboards/llm-inference.json](deplo
 
 ## Quickstart
 
-CPU stack. The first start downloads `Qwen/Qwen2.5-0.5B-Instruct` into `./.cache/huggingface` (about 1 GB) and then quantizes it to int8.
+CPU stack. The first start downloads `Qwen/Qwen2.5-0.5B-Instruct` into `./.cache/huggingface` (about 1 GB) and serves it in FP32. A later start uses that snapshot and does not wait on the hub. Set `QUANTIZATION=int8` or `int4` to switch weight formats.
 
 ```bash
 docker compose up --build
@@ -164,23 +164,43 @@ Unknown `model` values return 404. The server does not silently route them at a 
 - **One model thread.** A second thread would race the CPU runtime and oversubscribe the 4 cores. Throughput comes from the batch dimension. Horizontal scale means more gateway processes, not more threads in one process.
 - **Cohort join, not paged attention.** Implementing PagedAttention on top of a stock HF forward would be a research project and would not be honest about what runs on this CPU. The join rule is small enough to test: a waiting request is admitted only when its prompt fits the live cache, and only from the head of the queue.
 - **Left padding and explicit position ids.** Rows in a batch have different prompt lengths. Position ids for real tokens start at 0 on the right edge so RoPE is not shifted by the pad. The cache length is still the padded length, which is what makes a later join possible.
-- **INT8 as the default.** Dynamic quantization is the CPU path that actually uses integer GEMM. INT4-without-a-kernel is included because the size/quality comparison is the point, not because it wins on latency.
+- **FP32 as the default.** Dynamic INT8 is the CPU path that uses integer GEMM and it was faster per token here, but the two quality prompts no longer produced "42" or "Earth". The server stays on FP32 so a demo request is the reference model. INT4-without-a-kernel is in the comparison because the size/quality/latency trade is the point, not because it wins on speed.
 - **Proxy vs in-process.** vLLM, SGLang, and llama.cpp already speak HTTP and already batch. Reimplementing them in-process would hide the boundary an infra team actually operates: an edge gateway in front of a specialized server.
 - **Histograms, not client-side percentiles, in Grafana.** p95 in the dashboard is `histogram_quantile` over the scrape window. The benchmark report uses exact client-side percentiles because a short run has too few samples for a 1-minute rate histogram to be meaningful.
 
 ## Measured results
 
-See [bench/RESULTS.md](bench/RESULTS.md) for the host, the quantization table, the greedy text, and the batched vs unbatched load. Those files are the record. If a mode failed (FP16 on CPU is the likely one), the JSON contains the exception string.
+Host for this run: Intel Xeon, 4 cores, 15.63 GiB MemTotal, Python 3.12.3, torch 2.14.1+cpu, no GPU. Model `Qwen/Qwen2.5-0.5B-Instruct`. Raw JSON is in `bench/results/`. [bench/RESULTS.md](bench/RESULTS.md) is rendered from that JSON.
 
-Hardware for the committed run is whatever `bench/results/quant.json` records under `host`. It is a CPU-only measurement.
+Greedy single-request quantization, max 16 new tokens, median of 3 runs after a 4-token warmup. The prompt was "What is 17 + 25? Reply with digits only." FP32 and FP16 stopped at "42" (2 tokens). INT8 did not, so its end-to-end latency is a longer generation. Tokens/s is the fairer column. FP32 decode matched `model.generate` with repetition penalty disabled (the checkpoint's own `generation_config` turns sampling and a 1.1 penalty on; the gateway's temperature 0 path does not).
+
+| mode | resident MiB | median TTFT s | median tok/s | addition | planet |
+| --- | ---: | ---: | ---: | --- | --- |
+| fp32 | 1884.6 | 0.113 | 10.31 | `42` | `Earth` |
+| fp16 | 942.3 | 0.144 | 8.35 | `42` | `Earth` |
+| int8 | 519.5 | 0.062 | 41.00 | failed the digit check | failed the planet check |
+| int4 | 700.9 | 0.224 | 5.54 | `17 + 25 = 42` | `Earth` |
+
+FP16 ran on this CPU. It used half the resident memory of FP32 and was slightly slower. INT8 dynamic quantization was about 4x the FP32 token rate and failed both quality checks, which is why the server default is FP32. INT4 weight-only (dequantized every forward, `lm_head` left in FP32) kept the answers and was the slowest. It is not a GGUF Q4 kernel.
+
+Gateway load, FP32, streaming, prompt "In one short sentence, say what a token is.", `max_tokens=16`. Every request returned 16 completion tokens. Sample text, both modes: `A token is a small, portable unit of data that can be used to represent`.
+
+| scenario | batch | concurrency | ok | wall s | tok/s | latency p50 / p95 / p99 s | TTFT p50 / p95 / p99 s |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| unbatched | 1 | 1 | 4/4 | 3.12 | 20.50 | 0.786 / 0.801 / 0.802 | 0.122 / 0.134 / 0.135 |
+| batched | 4 | 4 | 8/8 | 2.90 | 44.15 | 1.449 / 1.466 / 1.466 | 0.310 / 0.320 / 0.320 |
+
+Batched throughput was 44.15 / 20.50 = 2.15x the unbatched run, at higher per-request latency, which is what a batch scheduler should do. p95 and p99 here are the order statistics of 4 and 8 requests, not a long-run tail.
+
+vLLM, SGLang, and llama.cpp were not part of this measurement.
 
 ## Resume bullets
 
-Use these only with the numbers from `bench/RESULTS.md` filled in. Do not round them into a different machine.
+These use the numbers in `bench/RESULTS.md`. Do not round them into a different machine.
 
-- Built an OpenAI-compatible inference gateway (FastAPI, SSE streaming) with pluggable backends: an in-process CPU scheduler over Qwen2.5-0.5B and HTTP proxies for vLLM, SGLang, and llama.cpp.
-- Implemented cohort continuous batching (shared prefill, KV-cache early exit, FIFO in-flight join) plus token-bucket limits, a bounded queue, and request timeouts. Compared batched and unbatched throughput on a 4-core CPU; figures are in the benchmark report.
-- Compared FP32, FP16, dynamic INT8, and weight-only INT4 on resident size, latency, and greedy output agreement, and published a Prometheus/Grafana dashboard for TTFT, latency percentiles, tokens/s, and queue depth.
+- Built an OpenAI-compatible inference gateway (FastAPI, SSE streaming) with pluggable backends: an in-process CPU scheduler over Qwen2.5-0.5B-Instruct and HTTP proxies for vLLM, SGLang, and llama.cpp.
+- Implemented cohort continuous batching (shared prefill, KV-cache early exit, FIFO in-flight join) plus token-bucket limits, a bounded queue, and request timeouts. On a 4-core Xeon, FP32 batched serving reached 44.15 completion tokens/s versus 20.50 unbatched (16-token generations, concurrency 4).
+- Compared FP32, FP16, dynamic INT8, and weight-only INT4 on the same CPU: INT8 was 41.0 tok/s versus 10.3 for FP32 but failed a two-prompt quality check, so the default server stays FP32. Published a Prometheus/Grafana dashboard for TTFT, latency percentiles, tokens/s, and queue depth.
 
 ## Layout
 

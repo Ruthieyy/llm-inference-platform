@@ -195,6 +195,15 @@ def _stop_ids(tokenizer: Any) -> set[int]:
     return stop
 
 
+def _load_local_or_hub(loader, model_id: str, **kwargs):
+    """Prefer a complete local snapshot so startup does not wait on the hub."""
+    try:
+        return loader(model_id, local_files_only=True, **kwargs)
+    except Exception as exc:
+        log.info("local snapshot unavailable for %s (%s); contacting the hub", model_id, exc)
+        return loader(model_id, **kwargs)
+
+
 def load_transformers_engine(settings: Settings) -> TransformersEngine:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -210,7 +219,7 @@ def load_transformers_engine(settings: Settings) -> TransformersEngine:
         settings.quantization,
         settings.torch_threads,
     )
-    tokenizer = AutoTokenizer.from_pretrained(settings.model_id)
+    tokenizer = _load_local_or_hub(AutoTokenizer.from_pretrained, settings.model_id)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
@@ -218,9 +227,10 @@ def load_transformers_engine(settings: Settings) -> TransformersEngine:
     dtype = torch.float32
     if settings.quantization == "fp16":
         dtype = torch.float16
-    model = AutoModelForCausalLM.from_pretrained(
+    model = _load_local_or_hub(
+        AutoModelForCausalLM.from_pretrained,
         settings.model_id,
-        torch_dtype=dtype,
+        dtype=dtype,
         low_cpu_mem_usage=True,
     )
     quant = settings.quantization.lower()

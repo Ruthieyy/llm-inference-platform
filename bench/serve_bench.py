@@ -54,7 +54,7 @@ def main() -> None:
     import asyncio
 
     model = os.environ.get("MODEL_ID", "Qwen/Qwen2.5-0.5B-Instruct")
-    quant = os.environ.get("QUANTIZATION", "int8")
+    quant = os.environ.get("QUANTIZATION", "fp32")
     port = os.environ.get("BENCH_PORT", "8000")
     base = f"http://127.0.0.1:{port}"
     env = os.environ.copy()

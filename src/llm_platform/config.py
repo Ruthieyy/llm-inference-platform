@@ -13,8 +13,9 @@ class Settings(BaseSettings):
     model_id: str = "Qwen/Qwen2.5-0.5B-Instruct"
     # transformers (in-process CPU) | vllm | sglang | llamacpp (OpenAI-compatible upstream)
     backend: str = "transformers"
-    # fp32 | fp16 | int8 | int4. fp16/int4 are weight formats; see README for CPU behavior.
-    quantization: str = "int8"
+    # fp32 | fp16 | int8 | int4. Default is fp32: measured INT8 was faster per token
+    # but failed the small quality check. See bench/RESULTS.md.
+    quantization: str = "fp32"
     max_batch_size: int = 4
     max_wait_ms: int = 20
     max_queue_size: int = 64

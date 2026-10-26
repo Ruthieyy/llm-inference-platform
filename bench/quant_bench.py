@@ -109,16 +109,22 @@ def _run_greedy(engine, messages: list[dict], max_new_tokens: int) -> dict:
 
 def _verify_against_generate(engine, max_new_tokens: int = 8) -> dict:
     import torch
+    from transformers import GenerationConfig
 
     prompt = "The capital of France is"
     ids = engine.encode_text(prompt)
     input_ids = torch.tensor([ids], dtype=torch.long)
+    # The checkpoint's generation_config enables repetition_penalty and sampling.
+    # The gateway's temperature=0 path is plain argmax, so the cross-check uses that.
     generated = engine.model.generate(
         input_ids,
-        max_new_tokens=max_new_tokens,
-        do_sample=False,
-        pad_token_id=engine.pad_token_id,
-        eos_token_id=list(engine.stop_token_ids) or engine.eos_token_id,
+        generation_config=GenerationConfig(
+            do_sample=False,
+            max_new_tokens=max_new_tokens,
+            pad_token_id=engine.pad_token_id,
+            eos_token_id=engine.eos_token_id,
+            repetition_penalty=1.0,
+        ),
     )
     expected = [int(token) for token in generated[0, len(ids) :].tolist()]
     state = engine.prefill([ids])
@@ -226,10 +232,13 @@ def main() -> None:
     settings = Settings(model_id=model_id, quantization="fp32", torch_threads=threads, log_level="warning")
     modes = ["fp32", "fp16", "int8", "int4"]
     results = []
+    out = ROOT / "bench" / "results" / "quant.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
     for mode in modes:
         print(f"=== {mode} ===", flush=True)
         record = _bench_mode(settings, mode, max_new_tokens, repeats)
         results.append(record)
+        out.write_text(json.dumps({"partial": True, "modes": results}, indent=2) + "\n")
         print(json.dumps({k: record[k] for k in record if k != "latency_runs"}), flush=True)
     import torch
 
@@ -260,8 +269,6 @@ def main() -> None:
                 text = quality.get("text", "")
                 quality["exact_match_fp32"] = text == ref
                 quality["word_jaccard_fp32"] = _jaccard(text, ref) if ref else None
-    out = ROOT / "bench" / "results" / "quant.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n")
     print(f"wrote {out}")
 

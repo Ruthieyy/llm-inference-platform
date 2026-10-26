@@ -24,7 +24,7 @@ services:
     environment:
       MODEL_ID: ${MODEL_ID:-Qwen/Qwen2.5-0.5B-Instruct}
       BACKEND: ${BACKEND:-transformers}
-      QUANTIZATION: ${QUANTIZATION:-int8}
+      QUANTIZATION: ${QUANTIZATION:-fp32}
       MAX_BATCH_SIZE: ${MAX_BATCH_SIZE:-4}
       MAX_WAIT_MS: ${MAX_WAIT_MS:-20}
       MAX_QUEUE_SIZE: ${MAX_QUEUE_SIZE:-64}
