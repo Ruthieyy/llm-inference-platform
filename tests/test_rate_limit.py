@@ -2,11 +2,11 @@ import asyncio
 
 import httpx
 from fastapi.testclient import TestClient
-from tests.conftest import chat_body, make_settings
-from tests.fake_engine import FakeEngine
 
 from llm_platform.app import create_app
 from llm_platform.rate_limit import RateLimiter
+from tests.conftest import chat_body, make_settings
+from tests.fake_engine import FakeEngine
 
 
 def test_token_bucket_enforces_burst_then_refills():

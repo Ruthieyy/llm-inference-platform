@@ -4,10 +4,10 @@ import threading
 
 import httpx
 from fastapi.testclient import TestClient
-from tests.conftest import chat_body, make_settings
-from tests.fake_engine import FakeEngine
 
 from llm_platform.app import create_app
+from tests.conftest import chat_body, make_settings
+from tests.fake_engine import FakeEngine
 
 
 def test_chat_completion_schema_and_metrics():

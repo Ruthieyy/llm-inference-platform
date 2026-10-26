@@ -1,8 +1,7 @@
 import asyncio
 
-from tests.fake_engine import FakeEngine
-
 from llm_platform.batching import CohortBatcher
+from tests.fake_engine import FakeEngine
 
 
 def _run(coro):

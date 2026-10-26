@@ -2,9 +2,9 @@ import asyncio
 import json
 
 import httpx
-from tests.conftest import chat_body, make_settings
 
 from llm_platform.app import create_app
+from tests.conftest import chat_body, make_settings
 
 
 def _upstream_payload(stream: bool) -> httpx.Response:
