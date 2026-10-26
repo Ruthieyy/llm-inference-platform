@@ -1,0 +1,165 @@
+# CPU stack is the default: gateway + Prometheus + Grafana.
+# GPU and llama.cpp servers are behind profiles and are not started by `docker compose up`.
+#
+#   docker compose up --build
+#
+# GPU (not executed in the environment that produced bench/RESULTS.md):
+#   BACKEND=vllm UPSTREAM_BASE_URL=http://vllm:8000/v1 \
+#     docker compose --profile gpu up --build gateway vllm prometheus grafana
+#
+#   BACKEND=sglang UPSTREAM_BASE_URL=http://sglang:30000/v1 \
+#     docker compose --profile gpu up --build gateway sglang prometheus grafana
+#
+# llama.cpp GGUF, once models/model.gguf exists:
+#   BACKEND=llamacpp UPSTREAM_BASE_URL=http://llamacpp:8080/v1 QUANTIZATION=gguf \
+#     docker compose --profile llamacpp up --build gateway llamacpp prometheus grafana
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_ID: ${MODEL_ID:-Qwen/Qwen2.5-0.5B-Instruct}
+      BACKEND: ${BACKEND:-transformers}
+      QUANTIZATION: ${QUANTIZATION:-fp32}
+      MAX_BATCH_SIZE: ${MAX_BATCH_SIZE:-4}
+      MAX_WAIT_MS: ${MAX_WAIT_MS:-20}
+      MAX_QUEUE_SIZE: ${MAX_QUEUE_SIZE:-64}
+      REQUEST_TIMEOUT_S: ${REQUEST_TIMEOUT_S:-180}
+      RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-20}
+      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-40}
+      TORCH_THREADS: ${TORCH_THREADS:-4}
+      MAX_NEW_TOKENS_CAP: ${MAX_NEW_TOKENS_CAP:-256}
+      UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-}
+      UPSTREAM_API_KEY: ${UPSTREAM_API_KEY:-EMPTY}
+      UPSTREAM_MAX_INFLIGHT: ${UPSTREAM_MAX_INFLIGHT:-16}
+      ENABLE_ADMIN: ${ENABLE_ADMIN:-false}
+      LOG_LEVEL: info
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - ${HF_CACHE:-./.cache/huggingface}:/root/.cache/huggingface
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 120s
+    depends_on: []
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      gateway:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/llm-inference.json
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+  vllm:
+    profiles: ["gpu"]
+    image: vllm/vllm-openai:v0.6.6.post1
+    ipc: host
+    ports:
+      - "8001:8000"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - ${HF_CACHE:-./.cache/huggingface}:/root/.cache/huggingface
+    command:
+      - --model
+      - ${MODEL_ID:-Qwen/Qwen2.5-0.5B-Instruct}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --dtype
+      - float16
+      - --max-model-len
+      - "2048"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  sglang:
+    profiles: ["gpu"]
+    image: lmsysorg/sglang:latest
+    ipc: host
+    ports:
+      - "8002:30000"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - ${HF_CACHE:-./.cache/huggingface}:/root/.cache/huggingface
+    entrypoint: ["python3", "-m", "sglang.launch_server"]
+    command:
+      - --model-path
+      - ${MODEL_ID:-Qwen/Qwen2.5-0.5B-Instruct}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "30000"
+      - --dtype
+      - float16
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  llamacpp:
+    profiles: ["llamacpp"]
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.llamacpp
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./models:/models:ro
+    command:
+      - -m
+      - ${GGUF_PATH:-/models/model.gguf}
+      - -c
+      - "2048"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - -t
+      - "4"
+      - -np
+      - "4"
+      - --metrics

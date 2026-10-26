@@ -1,0 +1,23 @@
+# CPU llama.cpp server for GGUF models. Not built by CI.
+# The binary path follows a default CMake layout; if a future llama.cpp
+# release moves it, the build fails loudly rather than serving the wrong thing.
+FROM debian:bookworm-slim AS build
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential cmake git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
+WORKDIR /src/llama.cpp
+RUN cmake -S . -B build -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CURL=OFF \
+    && cmake --build build -j"$(nproc)" --target llama-server \
+    && find build -name llama-server -type f -executable -exec cp {} /tmp/llama-server \;
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /tmp/llama-server /usr/local/bin/llama-server
+EXPOSE 8080
+ENTRYPOINT ["llama-server"]

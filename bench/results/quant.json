@@ -1,0 +1,297 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "device": "cpu",
+  "max_new_tokens": 16,
+  "repeats": 3,
+  "torch": "2.14.1+cpu",
+  "host": {
+    "cpu": "Intel(R) Xeon(R) Processor",
+    "cores": 4,
+    "mem_total_gb": 15.63,
+    "python": "3.12.3",
+    "platform": "Linux-6.12.94+-x86_64-with-glibc2.39"
+  },
+  "modes": [
+    {
+      "mode": "fp32",
+      "status": "ok",
+      "resident_bytes": 1976131328,
+      "resident_mb": 1884.59,
+      "load_s": 2.986,
+      "generate_check": {
+        "prompt": "The capital of France is",
+        "match": true,
+        "engine_tokens": [
+          12095,
+          13,
+          1084,
+          374,
+          279,
+          7772,
+          3283,
+          304
+        ],
+        "generate_tokens": [
+          12095,
+          13,
+          1084,
+          374,
+          279,
+          7772,
+          3283,
+          304
+        ],
+        "engine_text": " Paris. It is the largest city in",
+        "generate_text": " Paris. It is the largest city in"
+      },
+      "latency_runs": [
+        {
+          "text": "42",
+          "prompt_tokens": 44,
+          "completion_tokens": 2,
+          "latency_s": 0.19395271499979572,
+          "ttft_s": 0.11325994099979653,
+          "prefill_s": 0.1129329869997946,
+          "decode_s": 0.080182220000097,
+          "tokens_per_s": 10.311791716873396
+        },
+        {
+          "text": "42",
+          "prompt_tokens": 44,
+          "completion_tokens": 2,
+          "latency_s": 0.19552407399987715,
+          "ttft_s": 0.11302799399982177,
+          "prefill_s": 0.11275017899993145,
+          "decode_s": 0.081992917999969,
+          "tokens_per_s": 10.228919432198701
+        },
+        {
+          "text": "42",
+          "prompt_tokens": 44,
+          "completion_tokens": 2,
+          "latency_s": 0.1864313140001741,
+          "ttft_s": 0.10679019200006223,
+          "prefill_s": 0.10649490700006936,
+          "decode_s": 0.07912753999994493,
+          "tokens_per_s": 10.72781153062158
+        }
+      ],
+      "latency_s_median": 0.19395271499979572,
+      "ttft_s_median": 0.11302799399982177,
+      "tokens_per_s_median": 10.311791716873396,
+      "quality": [
+        {
+          "name": "addition",
+          "text": "42",
+          "expect_substr": "42",
+          "substr_hit": true,
+          "completion_tokens": 2,
+          "exact_match_fp32": true,
+          "word_jaccard_fp32": 1.0
+        },
+        {
+          "name": "planet",
+          "text": "Earth",
+          "expect_substr": "earth",
+          "substr_hit": true,
+          "completion_tokens": 1,
+          "exact_match_fp32": true,
+          "word_jaccard_fp32": 1.0
+        }
+      ]
+    },
+    {
+      "mode": "fp16",
+      "status": "ok",
+      "resident_bytes": 988065664,
+      "resident_mb": 942.29,
+      "load_s": 0.569,
+      "latency_runs": [
+        {
+          "text": "42",
+          "prompt_tokens": 44,
+          "completion_tokens": 2,
+          "latency_s": 0.22333080199996402,
+          "ttft_s": 0.12645130700002483,
+          "prefill_s": 0.1255431449999378,
+          "decode_s": 0.09543927599997915,
+          "tokens_per_s": 8.955325383196906
+        },
+        {
+          "text": "42",
+          "prompt_tokens": 44,
+          "completion_tokens": 2,
+          "latency_s": 0.28066489200000433,
+          "ttft_s": 0.1496464219999325,
+          "prefill_s": 0.1488659449998977,
+          "decode_s": 0.12934446400004163,
+          "tokens_per_s": 7.125935793921704
+        },
+        {
+          "text": "42",
+          "prompt_tokens": 44,
+          "completion_tokens": 2,
+          "latency_s": 0.23952219900002092,
+          "ttft_s": 0.1442161219999889,
+          "prefill_s": 0.14343579399996997,
+          "decode_s": 0.09373893599990879,
+          "tokens_per_s": 8.349956740334642
+        }
+      ],
+      "latency_s_median": 0.23952219900002092,
+      "ttft_s_median": 0.1442161219999889,
+      "tokens_per_s_median": 8.349956740334642,
+      "quality": [
+        {
+          "name": "addition",
+          "text": "42",
+          "expect_substr": "42",
+          "substr_hit": true,
+          "completion_tokens": 2,
+          "exact_match_fp32": true,
+          "word_jaccard_fp32": 1.0
+        },
+        {
+          "name": "planet",
+          "text": "Earth",
+          "expect_substr": "earth",
+          "substr_hit": true,
+          "completion_tokens": 1,
+          "exact_match_fp32": true,
+          "word_jaccard_fp32": 1.0
+        }
+      ]
+    },
+    {
+      "mode": "int8",
+      "status": "ok",
+      "resident_bytes": 544714496,
+      "resident_mb": 519.48,
+      "load_s": 4.231,
+      "latency_runs": [
+        {
+          "text": "If you type in a number, it will reply with the number repeated. For",
+          "prompt_tokens": 44,
+          "completion_tokens": 16,
+          "latency_s": 0.39025632499988205,
+          "ttft_s": 0.06448440799999844,
+          "prefill_s": 0.0642147799999293,
+          "decode_s": 0.32216537200019957,
+          "tokens_per_s": 40.99869489624501
+        },
+        {
+          "text": "If you type in a number, it will reply with the number repeated. For",
+          "prompt_tokens": 44,
+          "completion_tokens": 16,
+          "latency_s": 0.39962364299981346,
+          "ttft_s": 0.05969063699990329,
+          "prefill_s": 0.05940408199990088,
+          "decode_s": 0.335803447999524,
+          "tokens_per_s": 40.03767114451601
+        },
+        {
+          "text": "If you type in a number, it will reply with the number repeated. For",
+          "prompt_tokens": 44,
+          "completion_tokens": 16,
+          "latency_s": 0.34248977199990804,
+          "ttft_s": 0.06150915300008819,
+          "prefill_s": 0.061249764999956824,
+          "decode_s": 0.27727439399996,
+          "tokens_per_s": 46.71672355811051
+        }
+      ],
+      "latency_s_median": 0.39025632499988205,
+      "ttft_s_median": 0.06150915300008819,
+      "tokens_per_s_median": 40.99869489624501,
+      "quality": [
+        {
+          "name": "addition",
+          "text": "If you type in a number, it will reply with the number repeated. For",
+          "expect_substr": "42",
+          "substr_hit": false,
+          "completion_tokens": 16,
+          "exact_match_fp32": false,
+          "word_jaccard_fp32": 0.0
+        },
+        {
+          "name": "planet",
+          "text": "> I'm sorry, but I can't answer that. What would you like",
+          "expect_substr": "earth",
+          "substr_hit": false,
+          "completion_tokens": 16,
+          "exact_match_fp32": false,
+          "word_jaccard_fp32": 0.0
+        }
+      ]
+    },
+    {
+      "mode": "int4",
+      "status": "ok",
+      "resident_bytes": 734920448,
+      "resident_mb": 700.87,
+      "load_s": 1.109,
+      "latency_runs": [
+        {
+          "text": "17 + 25 = 42",
+          "prompt_tokens": 44,
+          "completion_tokens": 10,
+          "latency_s": 1.8059216409999408,
+          "ttft_s": 0.21870770900000025,
+          "prefill_s": 0.21845028699999602,
+          "decode_s": 1.5844502839995585,
+          "tokens_per_s": 5.537338815245045
+        },
+        {
+          "text": "17 + 25 = 42",
+          "prompt_tokens": 44,
+          "completion_tokens": 10,
+          "latency_s": 1.8026614180000706,
+          "ttft_s": 0.2257230889999846,
+          "prefill_s": 0.22544502300002023,
+          "decode_s": 1.57424794400049,
+          "tokens_per_s": 5.547353429849469
+        },
+        {
+          "text": "17 + 25 = 42",
+          "prompt_tokens": 44,
+          "completion_tokens": 10,
+          "latency_s": 1.8074395090000053,
+          "ttft_s": 0.2236870059998637,
+          "prefill_s": 0.22342008599980545,
+          "decode_s": 1.5810043929996027,
+          "tokens_per_s": 5.532688618460409
+        }
+      ],
+      "latency_s_median": 1.8059216409999408,
+      "ttft_s_median": 0.2236870059998637,
+      "tokens_per_s_median": 5.537338815245045,
+      "quality": [
+        {
+          "name": "addition",
+          "text": "17 + 25 = 42",
+          "expect_substr": "42",
+          "substr_hit": true,
+          "completion_tokens": 10,
+          "exact_match_fp32": false,
+          "word_jaccard_fp32": 0.2
+        },
+        {
+          "name": "planet",
+          "text": "Earth",
+          "expect_substr": "earth",
+          "substr_hit": true,
+          "completion_tokens": 1,
+          "exact_match_fp32": true,
+          "word_jaccard_fp32": 1.0
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Latency is a single greedy request, median of the timed repeats after one warmup of 4 tokens.",
+    "INT8 is torch dynamic quantization of Linear layers.",
+    "INT4 is group-wise weight-only packing with dequantize-on-forward and lm_head left in fp32.",
+    "FP16 is a full cast. On CPU it may be unsupported; that failure is recorded rather than imputed.",
+    "Quality substrings are a capability check. Agreement with FP32 text is the quantization check."
+  ]
+}
